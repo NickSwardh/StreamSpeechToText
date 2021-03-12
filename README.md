@@ -10,8 +10,8 @@ By using 2 Nuget packages, [Concentus](https://www.nuget.org/packages/Concentus/
 
 ### Using the demo
 
-1. Download and open *settings.cs* in the config folder and add the connectionstring to your Azure File Storage and Azure Speech Key.![Settings](https://nswardh.com/github/opusstream/settings.jpg)
-2. Finally select an opus audio file,a blobcontainer and add languages you want to autodetect in *Main()*.![Settings](https://nswardh.com/github/opusstream/blobcontainer.jpg)
+1. Download and open *settings.cs* in the config folder and add your *connectionstring* and *key* to Azure File Storage and Azure Speech. ![Settings](https://nswardh.com/github/opusstream/settings.jpg)
+4. Finally select an opus audio file, a blobcontainer and add languages you want to autodetect in *Main()*. ![Settings](https://nswardh.com/github/opusstream/blobcontainer.jpg)
 
 ### Demo Screenshot
 
