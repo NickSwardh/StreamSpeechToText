@@ -1,6 +1,7 @@
 ﻿using Azure.Storage.Blobs;
 using OpusStreamSpeechToText.Config;
 using System;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace OpusStreamSpeechToText.Services
@@ -20,30 +21,35 @@ namespace OpusStreamSpeechToText.Services
             var blobClient = client.GetBlobClient(fileName);
 
             if (!blobClient.Exists())
-                throw new Exception($@"Blob ""{fileName}"" in container ""{containerName}"" does not exist!");
+                throw new Exception($@"Can't find ""{fileName}"" in blobcontainer ""{containerName}"".");
 
             return blobClient;
         }
 
         private async Task<BlobContainerClient> SetBlobContainerClientAsync(string containerName)
         {
+            ValidateBlobContainerName(containerName);
+
             try
             {
-                // Azure File Storage ONLY accept lowercase names with letters, numbers and dashes (-)
-                containerName = containerName.ToLower();
-
                 BlobServiceClient blobServiceClient = new BlobServiceClient(Settings.AzureBlobStorage.CONNECTION_STRING);
                 BlobContainerClient containerClient = blobServiceClient.GetBlobContainerClient(containerName);
 
                 if (!await containerClient.ExistsAsync())
-                    throw new Exception($@"Blobcontainer ""{containerName}"" does not exist!");
+                    throw new ArgumentException($@"Blobcontainer ""{containerName}"" does not exist in Azure Storage!");
 
                 return containerClient;
             }
-            catch
+            catch (Exception)
             {
                 throw new Exception("Couldn't connect to Azure Storage, check your connectionstring.");
             }
+        }
+
+        private void ValidateBlobContainerName(string containerName)
+        {
+            if (!Regex.IsMatch(containerName, @"^[-a-z]+$"))
+                throw new ArgumentException($@"Containername ""{containerName}"" invalid. Azure only accepts lowercase letters, numbers and dashes.");
         }
     }
 }
