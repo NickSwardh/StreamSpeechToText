@@ -49,7 +49,7 @@ namespace OpusStreamSpeechToText.Services
                 recognizer.SessionStopped += SessionStopped;
                 recognizer.Canceled += SessionCanceled;
 
-                await LoadStreamIntoRecognizerAsync(audioInputStream, blobClient);
+                await InjectStreamIntoRecognizerAsync(audioInputStream, blobClient);
 
                 await recognizer.StartContinuousRecognitionAsync();
                 Task.WaitAny(new[] { _stopRecognition.Task });
@@ -59,7 +59,7 @@ namespace OpusStreamSpeechToText.Services
             return SpeechResult;
         }
 
-        private async Task LoadStreamIntoRecognizerAsync(PushAudioInputStream audioInputStream, BlobClient blobStream)
+        private async Task InjectStreamIntoRecognizerAsync(PushAudioInputStream audioInputStream, BlobClient blobStream)
         {
             using (var stream = await blobStream.OpenReadAsync())
             {
