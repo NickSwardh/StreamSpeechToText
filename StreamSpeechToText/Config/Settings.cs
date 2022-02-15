@@ -1,4 +1,4 @@
-﻿namespace OpusStreamSpeechToText.Config
+﻿namespace StreamSpeechToText.Config
 {
     public static class Settings
     {

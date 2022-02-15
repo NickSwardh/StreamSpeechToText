@@ -1,22 +1,25 @@
 ﻿using Azure.Storage.Blobs;
-using Concentus.Oggfile;
-using Concentus.Structs;
 using Microsoft.CognitiveServices.Speech;
 using Microsoft.CognitiveServices.Speech.Audio;
 using Newtonsoft.Json;
-using OpusStream.Models;
-using OpusStreamSpeechToText.Config;
+using StreamSpeechToText.Config;
+using StreamSpeechToText.Models;
+using StreamSpeechToText.Services.Extensions;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 
-namespace OpusStreamSpeechToText.Services
+namespace StreamSpeechToText.Services
 {
     public class SpeechToText
     {
         private SpeechConfig _speechConfig;
         private AutoDetectSourceLanguageConfig _languagesToDetect;
         private TaskCompletionSource<int> _stopRecognition;
+        private string _currentAudioFile;
+
+        private List<Speech> SpeechResult { get; set; }
 
         public SpeechToText(string[] languages)
         {
@@ -27,17 +30,18 @@ namespace OpusStreamSpeechToText.Services
         }
 
         /// <summary>
-        /// Returns speech to text from selected Opus audiofile streamed from a blobcontainer in Azure Storage.
+        /// Stream selected audio from Azure storage and return as "speech to text"
         /// </summary>
-        /// <param name="opusBlob">Name of opus file</param>
-        /// <param name="container">Azure blob container name</param>
-        /// <returns>List<Speech> container speechresults</returns>
-        public async Task<List<Speech>> RunRecognitionAsync(string opusBlob, string container)
+        /// <param name="audioFile">Name of audio-file</param>
+        /// <param name="container">Azure storage container name</param>
+        /// <returns>List<Speech></returns>
+        public async Task<List<Speech>> RunRecognitionAsync(string audioFile, string container)
         {
+            _currentAudioFile = audioFile;
             SpeechResult = new List<Speech>();
 
             var blobService = new BlobService();
-            var blobClient = await blobService.GetBlobFromContainerAsync(opusBlob, container);
+            var blobClient = await blobService.GetBlobFromContainerAsync(audioFile, container);
 
             using var audioInputStream = AudioInputStream.CreatePushStream();
             using var audioConfig = AudioConfig.FromStreamInput(audioInputStream);
@@ -61,26 +65,49 @@ namespace OpusStreamSpeechToText.Services
 
         private async Task InjectStreamIntoRecognizerAsync(PushAudioInputStream audioInputStream, BlobClient blobStream)
         {
-            using (var stream = await blobStream.OpenReadAsync())
+            using (audioInputStream)
             {
-                var decoder = new OpusDecoder(16000, 1);
-                var opus = new OpusOggReadStream(decoder, stream);
-
-                while (opus.HasNextPacket)
+                using (var stream = await blobStream.OpenReadAsync())
                 {
-                    short[] packet = opus.DecodeNextPacket();
-                    if (packet != null)
-                    {
-                        for (int i = 0; i < packet.Length; i++)
-                        {
-                            var bytes = BitConverter.GetBytes(packet[i]);
-                            audioInputStream.Write(bytes, bytes.Length);
-                        }
-                    }
+                    ReadAudioStream(stream, audioInputStream);
                 }
             }
+        }
 
-            audioInputStream.Close();
+        private void ReadAudioStream(Stream stream, PushAudioInputStream inputStream)
+        {
+            switch (GetAudioFormat())
+            {
+                case AudioFormat.Mp3:
+                    inputStream.Mp3(stream);
+                    break;
+                case AudioFormat.Opus:
+                    inputStream.Opus(stream);
+                    break;
+                case AudioFormat.Wav:
+                    inputStream.Wav(stream);
+                    break;
+            }
+        }
+
+        private AudioFormat GetAudioFormat()
+        {
+            var file = Path.GetExtension(_currentAudioFile).Trim('.');
+            var extension = char.ToUpper(file[0]) + file.Substring(1).ToLower();
+
+            var isValidFormat = Enum.TryParse(extension, out AudioFormat format);
+
+            if (!isValidFormat)
+            {
+                throw new FileFormatException($"{extension} is an unsupported audio format.");
+            }
+
+            return format;
+        }
+
+        private void SessionStarted(object sender, SessionEventArgs e)
+        {
+            Console.WriteLine($"Speech session {e.SessionId} started\r\n");
         }
 
         private void SessionStopped(object sender, SessionEventArgs e)
@@ -94,24 +121,19 @@ namespace OpusStreamSpeechToText.Services
             _stopRecognition.TrySetResult(0);
         }
 
-        private void SessionStarted(object sender, SessionEventArgs e)
-        {
-            Console.WriteLine($"Speech session {e.SessionId} started\r\n");
-        }
-
-        private void Recognized(object sender, SpeechRecognitionEventArgs e)
-        {
-            Console.WriteLine();
-            var test = GetResponse(e.Result.Properties);
-            SpeechResult.Add(test);
-        }
-
         private void Recognizing(object sender, SpeechRecognitionEventArgs e)
         {
             Console.WriteLine($"Recognizing text: {e.Result.Text}");
         }
 
-        private static Speech GetResponse(PropertyCollection properties)
+        private void Recognized(object sender, SpeechRecognitionEventArgs e)
+        {
+            Console.WriteLine();
+            var speech = GetResponse(e.Result.Properties);
+            SpeechResult.Add(speech);
+        }
+
+        private Speech GetResponse(PropertyCollection properties)
         {
             string property = properties.GetProperty(PropertyId.SpeechServiceResponse_JsonResult);
             return JsonConvert.DeserializeObject<Speech>(property);
@@ -120,8 +142,11 @@ namespace OpusStreamSpeechToText.Services
         private AutoDetectSourceLanguageConfig AutoMaticLanguageDetection(string[] languagesToDetect)
             => AutoDetectSourceLanguageConfig.FromLanguages(languagesToDetect);
 
-        private List<Speech> SpeechResult { get; set; }
-
+        /// <summary>
+        /// Convert ticks to hh:mm:ss
+        /// </summary>
+        /// <param name="ticks"></param>
+        /// <returns>TimeSpan</returns>
         public static string TicksToTime(long ticks)
             => TimeSpan.FromTicks(ticks).ToString(@"hh\:mm\:ss\.fff");
     }

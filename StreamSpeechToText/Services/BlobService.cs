@@ -1,10 +1,10 @@
 ﻿using Azure.Storage.Blobs;
-using OpusStreamSpeechToText.Config;
+using StreamSpeechToText.Config;
 using System;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
-namespace OpusStreamSpeechToText.Services
+namespace StreamSpeechToText.Services
 {
     public class BlobService
     {
@@ -14,7 +14,7 @@ namespace OpusStreamSpeechToText.Services
         /// <param name="fileName">Name of blob</param>
         /// <param name="containerName">Name of Blob container</param>
         /// <param name="saveToLocation"></param>
-        /// <returns>Stream</returns>
+        /// <returns>BlobClient</returns>
         public async Task<BlobClient> GetBlobFromContainerAsync(string fileName, string containerName)
         {
             var client = await SetBlobContainerClientAsync(containerName);

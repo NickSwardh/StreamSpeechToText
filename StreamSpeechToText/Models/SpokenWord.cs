@@ -1,4 +1,4 @@
-﻿namespace OpusStream.Models
+﻿namespace StreamSpeechToText.Models
 {
     public class SpokenWord
     {

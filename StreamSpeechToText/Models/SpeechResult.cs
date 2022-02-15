@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace OpusStream.Models
+namespace StreamSpeechToText.Models
 {
     public class SpeechResult
     {

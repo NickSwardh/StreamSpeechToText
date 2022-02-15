@@ -1,33 +1,41 @@
-﻿using OpusStream.Models;
-using OpusStreamSpeechToText.Services;
+﻿using StreamSpeechToText.Models;
+using StreamSpeechToText.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace OpusStream
+namespace StreamSpeechToText
 {
     class Program
     {
         static async Task Main(string[] args)
         {
-            var opusFile = "opusaudio.opus";
-            var containerName = "your_blob_container";
-            var languagesToAutoDetect = new string[] { "sv-SE", "en-US", "pt-BR" };
+            var fileName = "some_audio.mp3";
+            var containerName = "azure_container_name";
+            var languagesToAutoDetect = new string[]
+            {
+                "sv-SE",
+                "en-US",
+                "pt-BR"
+            };
 
+            await StartProcessingAudioAsync(fileName, containerName, languagesToAutoDetect);
+        }
+
+        public static async Task StartProcessingAudioAsync(string fileName, string container, string[] languages)
+        {
             try
             {
-                var speechToText = new SpeechToText(languagesToAutoDetect);
-                var textResult = await speechToText.RunRecognitionAsync(opusFile, containerName);
+                var speechToText = new SpeechToText(languages);
+                var textResult = await speechToText.RunRecognitionAsync(fileName, container);
 
                 PrintSpeechToTextResult(textResult);
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Error: " + ex.Message);
+                Console.WriteLine("An error occured: " + ex.Message);
             }
-
-            Console.ReadKey();
         }
 
         public static void PrintSpeechToTextResult(List<Speech> result)
@@ -63,13 +71,13 @@ namespace OpusStream
                     {
                         var timestamp = SpeechToText.TicksToTime(word.Offset);
                         var duration = SpeechToText.TicksToTime(word.Duration);
-                        PrintWordDetails(timestamp, duration, word.Word);
+                        PrintWordDetail(timestamp, duration, word.Word);
                     }
                 }
             }
         }
 
-        public static void PrintWordDetails(string timeStamp, string duration, string word)
+        public static void PrintWordDetail(string timeStamp, string duration, string word)
         {
             Console.Write($"\tTimestamp: ");
 
